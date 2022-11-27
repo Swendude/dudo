@@ -5,6 +5,7 @@ import {
   ServerToClientEvents,
   ClientToServerEvents
 } from "../../../types/dudo";
+import DiceView from "../DiceView";
 
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
   "http://localhost:4000",
@@ -17,13 +18,13 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
 type Action =
   | { type: "SET_CONNECTED" }
   | { type: "SET_ERROR"; error: string }
-  | { type: "ID_RECEIVED"; id: string }
+  | { type: "ID_RECEIVED"; id: number }
   | { type: "GAME_RECEIVED"; game: DudoGame };
 
 type State = {
   connected: boolean;
   error: string | null;
-  playerId: string | null;
+  playerId: number | null;
   game: DudoGame | null;
 };
 
@@ -65,14 +66,26 @@ const Game = ({ id }: { id: string }) => {
     socket.on("game", (game) => dispatch({ type: "GAME_RECEIVED", game }));
   }, [id]);
 
+  if (!state.game || !state.playerId) return <p>Connecting..</p>;
+  const { game, playerId, error, connected } = state;
+  const playerDice = state.game.players[playerId - 1].dice;
+
   return (
     <div>
       <p>
-        Game {id} {state.connected ? "Connected!" : "Disconnected!"}
+        Game {id} {connected ? "Connected!" : "Disconnected!"}
       </p>
-      {state.playerId && <p>Your id: {state.playerId}</p>}
-      {state.error && <p>{state.error}</p>}
-      {state.game && <p>Players: {state.game.players.length}</p>}
+      {error && <p>{error}</p>}
+      <p>Your id: {playerId}</p>
+      <p>Players: {game.players.length}</p>
+      <button onClick={() => socket.emit("roll", id)}>Roll!</button>
+      <hr />
+      <h3>Your dice:</h3>
+      <DiceView dice={playerDice} />
+      <h3>Others:</h3>
+      {state.game.players.map(
+        (player, i) => i !== playerId - 1 && <DiceView dice={player.dice} />
+      )}
     </div>
   );
 };

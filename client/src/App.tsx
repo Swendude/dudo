@@ -54,14 +54,18 @@ function App() {
       <GlobalStyle />
 
       <h1>Dudo</h1>
-      <button onClick={() => requestGame()}>Start new game</button>
-      <div>
-        <input
-          value={gameCodeInp}
-          onChange={(e) => setGameCodeInp(e.target.value)}
-        />
-        <button onClick={() => setGameCode(gameCodeInp)}>Join game</button>
-      </div>
+      {!gameCode && (
+        <>
+          <button onClick={() => requestGame()}>Start new game</button>
+          <div>
+            <input
+              value={gameCodeInp}
+              onChange={(e) => setGameCodeInp(e.target.value)}
+            />
+            <button onClick={() => setGameCode(gameCodeInp)}>Join game</button>
+          </div>
+        </>
+      )}
       {gameCode && <Game id={gameCode} />}
     </Base>
   );
