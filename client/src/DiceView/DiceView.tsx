@@ -1,4 +1,4 @@
-import { PlayerDice } from "../../../types/dudo";
+import { Dice, PlayerDice } from "../../../types/dudo";
 import styled from "styled-components";
 
 const Row = styled.div`
@@ -7,7 +7,7 @@ const Row = styled.div`
   gap: 1rem;
 `;
 
-const Dice = styled.div`
+const DiceBlock = styled.div`
   width: 4rem;
   aspect-ratio: 1;
   border: solid 1px #000;
@@ -17,13 +17,24 @@ const Dice = styled.div`
   font-size: 1rem;
 `;
 
+const valueToStr = (value: Dice): string => {
+  switch (value) {
+    case "hidden":
+      return "?";
+    case null:
+      return "_";
+    default:
+      return value.toString();
+  }
+};
+
 const DiceView = ({ dice }: { dice: PlayerDice }) => {
   return (
     <Row>
       {dice.map((d) => (
-        <Dice>
-          <p>{d || "❓"}</p>
-        </Dice>
+        <DiceBlock>
+          <p>{valueToStr(d)}</p>
+        </DiceBlock>
       ))}
     </Row>
   );

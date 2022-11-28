@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer } from "react";
+import { useEffect, useReducer } from "react";
 import io, { Socket } from "socket.io-client";
 import {
   DudoGame,
@@ -8,7 +8,7 @@ import {
 import DiceView from "../DiceView";
 
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
-  "http://localhost:4000",
+  process.env.SERVER_URL || "http://localhost:4000",
   {
     transports: ["websocket"],
     autoConnect: false
@@ -18,20 +18,20 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
 type Action =
   | { type: "SET_CONNECTED" }
   | { type: "SET_ERROR"; error: string }
-  | { type: "ID_RECEIVED"; id: number }
+  | { type: "IX_RECEIVED"; ix: number }
   | { type: "GAME_RECEIVED"; game: DudoGame };
 
 type State = {
   connected: boolean;
   error: string | null;
-  playerId: number | null;
+  playerIx: number | null;
   game: DudoGame | null;
 };
 
 const initialState: State = {
   connected: false,
   error: null,
-  playerId: null,
+  playerIx: null,
   game: null
 };
 
@@ -45,8 +45,8 @@ const gameReducer = (state: State, action: Action) => {
       return { ...state, error: action.error };
     case "GAME_RECEIVED":
       return { ...state, game: action.game };
-    case "ID_RECEIVED":
-      return { ...state, playerId: action.id };
+    case "IX_RECEIVED":
+      return { ...state, playerIx: action.ix };
     default:
       return state;
   }
@@ -62,13 +62,16 @@ const Game = ({ id }: { id: string }) => {
       socket.emit("register", id);
     });
     socket.on("error", (msg) => dispatch({ type: "SET_ERROR", error: msg }));
-    socket.on("receiveId", (id) => dispatch({ type: "ID_RECEIVED", id }));
+    socket.on("receiveIx", (ix) => dispatch({ type: "IX_RECEIVED", ix }));
     socket.on("game", (game) => dispatch({ type: "GAME_RECEIVED", game }));
   }, [id]);
 
-  if (!state.game || !state.playerId) return <p>Connecting..</p>;
-  const { game, playerId, error, connected } = state;
-  const playerDice = state.game.players[playerId - 1].dice;
+  // if (!state.game || state.playerIx === null || !state.error)
+  //   return <p>Connection error: {state.error}</p>;
+  if (!state.game || state.playerIx === null) return <p>Connecting..</p>;
+
+  const { game, playerIx, error, connected } = state;
+  const playerDice = state.game.players[playerIx].dice;
 
   return (
     <div>
@@ -76,15 +79,36 @@ const Game = ({ id }: { id: string }) => {
         Game {id} {connected ? "Connected!" : "Disconnected!"}
       </p>
       {error && <p>{error}</p>}
-      <p>Your id: {playerId}</p>
+      <p>Your id: {playerIx}</p>
       <p>Players: {game.players.length}</p>
-      <button onClick={() => socket.emit("roll", id)}>Roll!</button>
+      <p>
+        Now Playing:{" "}
+        {game.state.state === "Rolled"
+          ? game.state.currentPlayer
+          : "not started"}
+      </p>
+
+      {game.state.state === "Preparing" && (
+        <button onClick={() => socket.emit("start", id)}>Start!</button>
+      )}
+      {game.state.state === "Rolled" && (
+        <button onClick={() => socket.emit("roll", id)}>Roll!</button>
+      )}
+
       <hr />
       <h3>Your dice:</h3>
       <DiceView dice={playerDice} />
       <h3>Others:</h3>
       {state.game.players.map(
-        (player, i) => i !== playerId - 1 && <DiceView dice={player.dice} />
+        (player, i) =>
+          i !== playerIx && (
+            <div>
+              <span>
+                <h4>Player {i}</h4>
+                <DiceView dice={player.dice} />
+              </span>
+            </div>
+          )
       )}
     </div>
   );

@@ -9,8 +9,8 @@ import {
   SocketData,
   InterServerEvents
 } from "../types/dudo";
-import { rollDice } from "./gameLogic";
-const PORT = 4000;
+import { maskGame, rollDice } from "./gameLogic";
+const PORT = process.env.PORT || 4000;
 
 const app = express();
 const server = http.createServer(app);
@@ -29,20 +29,40 @@ app.get("/game", (req, res) => {
   const rand = Math.random().toString().slice(2, 8);
   // Create new game
   games[rand] = {
+    id: rand,
     players: [],
-    state: "Preparing"
+    state: { state: "Preparing" }
   };
-  console.log(games);
+  console.log(`New game created with gameId: ${rand}`);
   res.send({ id: rand });
 });
+
+const emitMaskedGames = (game: DudoGame) => {
+  game.players.forEach((player, playerId) => {
+    io.to(`${game.id}_${playerId}`).emit("game", maskGame(playerId, game));
+  });
+};
 
 io.on("connect", (socket) => {
   console.log("user connected!");
 
   socket.on("register", (gameId: string) => {
-    socket.join(gameId);
-
     const game = games[gameId];
+    if (!game) {
+      console.log("NO GAME");
+      return;
+    }
+
+    if (game.players.length > 4 || game.state.state === "Rolled") {
+      socket.emit(
+        "error",
+        `Game with game ID ${gameId} has already started or is full!`
+      );
+      socket.disconnect();
+      return;
+    }
+
+    socket.join(gameId);
 
     if (!game) {
       socket.emit("error", `Game with game ID ${gameId} not found!`);
@@ -56,16 +76,16 @@ io.on("connect", (socket) => {
         { dice: [null, null, null, null, null] }
       ]
     };
-    const playerId = games[gameId].players.length;
+    const playerIx = games[gameId].players.length - 1;
+    socket.join(`${gameId}_${playerIx}`);
 
     io.to(gameId).emit("game", games[gameId]);
-    socket.emit("receiveId", playerId);
+    socket.emit("receiveIx", playerIx);
   });
 
-  socket.on("roll", (gameId: string) => {
-    console.log(gameId);
+  socket.on("start", (gameId: string) => {
     games[gameId] = rollDice(games[gameId]);
-    io.to(gameId).emit("game", games[gameId]);
+    emitMaskedGames(games[gameId]);
   });
 });
 
