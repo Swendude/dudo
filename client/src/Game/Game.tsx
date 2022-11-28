@@ -8,7 +8,7 @@ import {
 import DiceView from "../DiceView";
 
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
-  process.env.SERVER_URL || "http://localhost:4000",
+  process.env.REACT_APP_SERVER_URL || "http://localhost:4000",
   {
     transports: ["websocket"],
     autoConnect: false
