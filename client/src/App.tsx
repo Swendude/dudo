@@ -40,12 +40,12 @@ const Base = styled.div`
   flex-direction: column;
   align-items: center;
 `;
-
+const API_URL = process.env.REACT_APP_SERVER_URL || "http://localhost:4000";
 function App() {
   const [gameCode, setGameCode] = useState<string | null>(null);
   const [gameCodeInp, setGameCodeInp] = useState<string>("");
   const requestGame = async () => {
-    const idResponse = await axios.get("http://localhost:4000/game");
+    const idResponse = await axios.get(`${API_URL}/game`);
     setGameCode(idResponse.data.id);
   };
 
